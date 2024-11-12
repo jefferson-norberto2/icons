@@ -62,7 +62,6 @@ def resize_by_scale(image, scale=1.0):
     h, w, _ = img.shape
     h = int(h * scale)
     w = int(w * scale)
-    print(w, h)
     img = cv2.resize(img, (w, h), interpolation=cv2.INTER_CUBIC)
 
     return img
@@ -93,119 +92,75 @@ def show_transformations(image: np.ndarray, image_name='name.jpg', contours: lis
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
-def compare_images(image1, image2):
-    # Pré-processar as imagens e encontrar contornos principais
-    edges1 = load_and_preprocess_image(image1)
-    edges2 = load_and_preprocess_image(image2)
+def icon_match(image, icons_path, threshold=0.6):
+    img = image.copy()
+    icons = os.listdir(icons_path)
 
-    contour1 = get_contours(edges1, 0)
-    contour2 = get_contours(edges2, 0)
+    max_values = []
+    max_locations = []
+    icon_dimensions = []
 
-    # Comparar os contornos usando cv2.matchShapes
-    similarity_score = cv2.matchShapes(contour1, contour2, cv2.CONTOURS_MATCH_I1, 0.0)
+    for icon in icons:
+        # Carrega a imagem do ícone
+        icon_image = cv2.imread(f'{icons_path}/{icon}')
+        icon_height, icon_width = icon_image.shape[:2]
+        
+        # Realiza o template matching
+        result = cv2.matchTemplate(img, icon_image, cv2.TM_CCOEFF_NORMED)
+        
+        # Encontra a posição com a maior correspondência
+        _, max_val, _, max_loc = cv2.minMaxLoc(result)
+        
+        # Define o threshold (ajuste conforme necessário)
+        
+        if max_val >= threshold:
+            threshold = round(max_val, 1)
+            max_values.append(max_val)
+            max_locations.append(max_loc)
+            icon_dimensions.append((icon_width, icon_height))  # Armazena as dimensões do ícone
 
-    # Definir um limiar para considerar as imagens semelhantes
-    similarity_threshold = 0.1  # Ajuste esse valor conforme necessário
-    are_similar = similarity_score < similarity_threshold
+    # Verifica se encontrou correspondências válidas
+    if max_values:
+        # Encontra o índice do maior valor de correspondência
+        best_match_index = max_values.index(max(max_values))
 
-    return are_similar, similarity_score
-
-def compare_l2_norm(img1, img2):
-    # Redimensiona as imagens para que sejam do mesmo tamanho
-    img1 = cv2.resize(img1, (img2.shape[1], img2.shape[0]))
-
-    # Calcula a diferença absoluta entre as imagens
-    difference = cv2.absdiff(img1, img2)
+        print('maior valor', max_values[best_match_index])
+        
+        # Pega a posição e as dimensões do ícone com maior correspondência
+        best_match_loc = max_locations[best_match_index]
+        best_icon_width, best_icon_height = icon_dimensions[best_match_index]
+        
+        # Desenha o retângulo ao redor do ícone encontrado
+        top_left = best_match_loc
+        bottom_right = (top_left[0] + best_icon_width, top_left[1] + best_icon_height)
+        cv2.rectangle(img, top_left, bottom_right, (0, 255, 0), 2)
     
-    # Calcula a norma L2 (distância Euclidiana)
-    norm_diff = np.linalg.norm(difference)
-    return norm_diff  # Valores mais baixos indicam maior similaridade
+    return img, threshold
+
 
 if __name__ == '__main__':
     
-    # cap = cv2.VideoCapture(r'icons\assets\record.mp4')
+    cap = cv2.VideoCapture(r'icons\assets\record2.mp4')
+    ret, frame = cap.read()
+    threshold = 0.6
 
-    # ret, frame = cap.read()
+    while ret:
+        # frame = resize_by_scale(frame, scale=0.3)
+        frame = cv2.resize(frame, (400, 850))
 
-    # while ret:
-    #     frame = resize_by_scale(frame, scale=0.7)
-    #     # mask = mask_hsv(frame)
+        frame, threshold = icon_match(frame, r'icons\assets\rois\instagram', threshold)
 
-    #     # cv2.bitwise_not(mask, mask)
+        cv2.imshow('Vídeo', frame)
 
-    #     edges = load_and_preprocess_image(frame)
+        # Aguarda 25 ms e verifica se a tecla 'q' foi pressionada para sair
+        if cv2.waitKey(25) & 0xFF == ord('q'):
+            break
 
-    #     cv2.dilate(edges, (9,9), edges, iterations=12)
+        ret, frame = cap.read()
 
-    #     contours = get_contours(edges, 500)
+    # _, image = get_image(r'icons\assets\screen3.jpg', 0.3)
 
-    #     bboxes = get_bounding_boxes(contours, min_bbox_size=0)
+    # image, _ = icon_match(image, r'icons\assets\rois\facebook')
 
-    #     frame = drawn_bboxes_in_image(frame, bboxes)
-
-    #     cv2.imshow('Vídeo', frame)
-
-    #     # Aguarda 25 ms e verifica se a tecla 'q' foi pressionada para sair
-    #     if cv2.waitKey(25) & 0xFF == ord('q'):
-    #         break
-
-    #     ret, frame = cap.read()
-
-    # _, image = get_image(r'icons\assets\screen2.jpg', 0.4)
-
-    # mask = mask_hsv(image, 0, 0, 0, 0, 0, 255)
-    # edges = load_and_preprocess_image(image)
-
-    # cv2.dilate(edges, (9,9), edges, iterations=9)
-
-    # cv2.imshow('edges', edges)
-    # cv2.bitwise_not(mask, mask)
-
-    # contours = get_contours(edges, 500)
-
-    # boxes = get_bounding_boxes(contours, min_bbox_size=0)
-
-    # show_transformations(image, 'name', bboxes=boxes)
-    # _, image = get_image(r'icons\assets\screen2.jpg', 0.5)
-
-    image = cv2.imread(r'icons\assets\screen3.jpg')
-    image = cv2.resize(image, (390, 800))
-    # Obtém as dimensões do ícone
-    icon = cv2.imread(r'icons\assets\rois\face.png')
-    icon_height, icon_width = icon.shape[:2]
-
-    # Realiza o template matching para encontrar o ícone no print
-    result = cv2.matchTemplate(image, icon, cv2.TM_CCOEFF_NORMED)
-
-    # Encontra a posição com a maior correspondência
-    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
-
-    print(max_val)
-
-    # Define o threshold (ajuste conforme necessário)
-    threshold = 0.3
-    if max_val >= threshold:
-        print("Ícone encontrado com correspondência:", max_val)
-        # Desenha um retângulo ao redor da correspondência encontrada
-        top_left = max_loc
-        bottom_right = (top_left[0] + icon_width, top_left[1] + icon_height)
-        cv2.rectangle(image, top_left, bottom_right, (0, 255, 0), 2)
-    else:
-        print("Ícone não encontrado ou correspondência insuficiente")
-
-    # Exibe o resultado com as correspondências destacadas (se houver)
-    cv2.imshow('Resultado', image)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-
-    # icon = cv2.imread(r'icons\assets\face2.png')
-    # # edge_icon = load_and_preprocess_image(icon)
-    # for i, (x, y, w, h) in enumerate(boxes):
-    #     roi = image[y:y+h, x:x+w]
-    #     # edge_roi = load_and_preprocess_image(roi)
-
-    #     # print(compare_images(icon, roi))
-        
-
-    #     cv2.imshow('icone', roi)
-    #     cv2.waitKey(0)
+    # cv2.imshow('image', image)
+    # cv2.waitKey(0)
