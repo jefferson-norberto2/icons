@@ -8,6 +8,8 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "3.11.*"
 opencv-python = "^4.10.0.84"
+uiautomator2 = "^3.5.0"
+rich = "^14.2.0"
 
 
 [build-system]

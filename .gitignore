@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+*.pyo
+
+# Ignore generated icons assets
+*_boxes_v2.jpg
