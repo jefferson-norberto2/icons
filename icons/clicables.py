@@ -156,7 +156,23 @@ def save_bounding_boxes_to_file(bounding_boxes, image, file_path):
             h_norm = box[3] / height
             f.write(f"0 {x_center} {y_center} {w_norm} {h_norm}\n")
 
-def draw_boxes_by_file(image, file_path, output_path):
+def show_boxes(image, bounding_boxes):
+    """
+    This function displays the image with bounding boxes.
+
+    :param image: the input image
+    :param bounding_boxes: List of bounding boxes to draw
+    """
+    for (x, y, w, h) in bounding_boxes:
+        cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2)
+    
+    # Adjust window size to image size
+    cv2.namedWindow('Image with Bounding Boxes', cv2.WINDOW_NORMAL)
+    cv2.imshow('Image with Bounding Boxes', image)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+def xcyc_wh_normalized_to_xminymin_xmaxymax_pixels(image, file_path):
     """
     This function reads bounding boxes from a text file, draws them on the image,
     and saves the result.
@@ -180,4 +196,4 @@ def draw_boxes_by_file(image, file_path, output_path):
             y = int(y_center * height - h / 2)
             bounding_boxes.append((x, y, w, h))
 
-    draw_bounding_boxes(image, bounding_boxes, output_path)
+    return bounding_boxes
