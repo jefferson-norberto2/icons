@@ -87,8 +87,17 @@ def merge_bounding_boxes(boxes, buffer=20):
 
     return boxes.astype(int).tolist()
 
+def read_image(image_path):
+    """
+    Reads an image from the given path.
 
-def get_clickable_areas(image_path, threshold=100):
+    :param image_path: Path to the input image
+    :return: Loaded image
+    """
+    return cv2.imread(image_path)
+
+
+def get_clickable_areas(image, threshold=100):
     """
     This function takes an image path and a threshold value as input,
     processes the image to find clickable areas (non-white regions),
@@ -99,10 +108,9 @@ def get_clickable_areas(image_path, threshold=100):
     :return: List of bounding boxes for clickable areas
     """
     # Load the image
-    image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
-    
+    image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)    
     # Apply a binary threshold to get a binary image
-    _, binary_image = cv2.threshold(image, threshold, 255, cv2.THRESH_BINARY)
+    _, binary_image = cv2.threshold(image_gray, threshold, 255, cv2.THRESH_BINARY)
     
     # Find contours of the clickable areas
     contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -115,16 +123,14 @@ def get_clickable_areas(image_path, threshold=100):
     
     return bounding_boxes
 
-def draw_bounding_boxes(image_path, bounding_boxes, output_path):
+def draw_bounding_boxes(image, bounding_boxes, output_path):
     """
     This function draws bounding boxes on the image and saves the result.
 
-    :param image_path: Path to the input image
+    :param image: the input image
     :param bounding_boxes: List of bounding boxes to draw
     :param output_path: Path to save the output image
     """
-    # Load the original image
-    image = cv2.imread(image_path)
     
     # Draw each bounding box on the image
     for (x, y, w, h) in bounding_boxes:
@@ -132,3 +138,46 @@ def draw_bounding_boxes(image_path, bounding_boxes, output_path):
     
     # Save the output image
     cv2.imwrite(output_path, image)
+
+def save_bounding_boxes_to_file(bounding_boxes, image, file_path):
+    """
+    This function saves the bounding boxes to a text file.
+
+    :param bounding_boxes: List of bounding boxes to save
+    :param file_path: Path to the output text file
+    """
+    width, height = image.shape[1], image.shape[0]
+    with open(file_path, 'w') as f:
+        for box in bounding_boxes:
+            # Take centroid and normalize
+            x_center = (box[0] + box[2] / 2) / width
+            y_center = (box[1] + box[3] / 2) / height
+            w_norm = box[2] / width
+            h_norm = box[3] / height
+            f.write(f"0 {x_center} {y_center} {w_norm} {h_norm}\n")
+
+def draw_boxes_by_file(image, file_path, output_path):
+    """
+    This function reads bounding boxes from a text file, draws them on the image,
+    and saves the result.
+
+    :param image: the input image
+    :param file_path: Path to the input text file with bounding boxes
+    :param output_path: Path to save the output image
+    """
+    height, width = image.shape[0], image.shape[1]
+    bounding_boxes = []
+
+    with open(file_path, 'r') as f:
+        for line in f:
+            parts = line.strip().split()
+            if len(parts) != 5:
+                continue
+            _, x_center, y_center, w_norm, h_norm = map(float, parts)
+            w = int(w_norm * width)
+            h = int(h_norm * height)
+            x = int(x_center * width - w / 2)
+            y = int(y_center * height - h / 2)
+            bounding_boxes.append((x, y, w, h))
+
+    draw_bounding_boxes(image, bounding_boxes, output_path)
